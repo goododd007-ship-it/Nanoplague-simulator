@@ -274,7 +274,7 @@ function triggerOutbreak() {
     currentVirus = selectedVirus;
     isPaused = false;
 
-    if (currentVirus === "Kafka (★‿★)") {
+    if (currentVirus === "Kafka") {
         kafkaVisualPulse();
     }
 
@@ -349,9 +349,9 @@ function runDayCycle(virusType) {
             if (virusType === "covid") dailyMortalityChance = COVID_MORTALITY;
             if (virusType === "measles") dailyMortalityChance = MEASLES_MORTALITY;
             if (virusType === "lyssavirus") dailyMortalityChance = LYSSA_MORTALITY;
-            if (virusType === "Kafka (★‿★)") dailyMortalityChance = KAFKA_MORTALITY;
+            if (virusType === "Kafka") dailyMortalityChance = KAFKA_MORTALITY;
             // Kafka should not cause deaths until an infected house has been infected for at least 2 days
-            if (virusType === "Kafka (★‿★)" && activeHouseNextState.daysInfected < 2) {
+            if (virusType === "Kafka" && activeHouseNextState.daysInfected < 2) {
                 dailyMortalityChance = 0;
             }
             if (Math.random() < dailyMortalityChance) {
@@ -362,7 +362,7 @@ function runDayCycle(virusType) {
             // --- NEW NOVEL VIRUS PROBABILISTIC RECOVERY ---
             else if (activeHouseNextState.daysInfected >= MIN_DAYS_BEFORE_RECOVERY) {
 
-                if (virusType !== "Kafka (★‿★)") {
+                if (virusType !== "Kafka") {
                     const effectiveRecovery = DAILY_RECOVERY_CHANCE * (1 + SYMPTOM_AWARENESS);
                     if (Math.random() < effectiveRecovery) {
                         activeHouseNextState.isInfected = false;
