@@ -274,7 +274,7 @@ function triggerOutbreak() {
     currentVirus = selectedVirus;
     isPaused = false;
 
-    if (currentVirus === "Kafka") {
+    if (currentVirus === "Kafka (★‿★)") {
         kafkaVisualPulse();
     }
 
@@ -349,9 +349,9 @@ function runDayCycle(virusType) {
             if (virusType === "covid") dailyMortalityChance = COVID_MORTALITY;
             if (virusType === "measles") dailyMortalityChance = MEASLES_MORTALITY;
             if (virusType === "lyssavirus") dailyMortalityChance = LYSSA_MORTALITY;
-            if (virusType === "Kafka") dailyMortalityChance = KAFKA_MORTALITY;
+            if (virusType === "Kafka (★‿★)") dailyMortalityChance = KAFKA_MORTALITY;
             // Kafka should not cause deaths until an infected house has been infected for at least 2 days
-            if (virusType === "Kafka" && activeHouseNextState.daysInfected < 2) {
+            if (virusType === "Kafka (★‿★)" && activeHouseNextState.daysInfected < 2) {
                 dailyMortalityChance = 0;
             }
             if (Math.random() < dailyMortalityChance) {
@@ -362,7 +362,7 @@ function runDayCycle(virusType) {
             // --- NEW NOVEL VIRUS PROBABILISTIC RECOVERY ---
             else if (activeHouseNextState.daysInfected >= MIN_DAYS_BEFORE_RECOVERY) {
 
-                if (virusType !== "Kafka") {
+                if (virusType !== "Kafka (★‿★)") {
                     const effectiveRecovery = DAILY_RECOVERY_CHANCE * (1 + SYMPTOM_AWARENESS);
                     if (Math.random() < effectiveRecovery) {
                         activeHouseNextState.isInfected = false;
@@ -516,44 +516,56 @@ function runDayCycle(virusType) {
             }
 
 // --- Kafka ---
-if (virusType === "Kafka") {
+            if (virusType === "Kafka (★‿★)") {
 
-    // 1. Kafka spreads FIRST to the surrounding radius
-    const maxRadius = 50; 
-    for (let dr = -maxRadius; dr <= maxRadius; dr++) {
-        for (let dc = -maxRadius; dc <= maxRadius; dc++) {
+                // Kafka spreads FIRST
+                const maxRadius = 50; 
+                for (let dr = -maxRadius; dr <= maxRadius; dr++) {
+                    for (let dc = -maxRadius; dc <= maxRadius; dc++) {
 
-            if (dr === 0 && dc === 0) continue;
+                        if (dr === 0 && dc === 0) continue;
 
-            let tr = r + dr;
-            let tc = c + dc;
+                        let tr = r + dr;
+                        let tc = c + dc;
 
-            if (tr >= 0 && tr < GRID_SIZE && tc >= 0 && tc < GRID_SIZE) {
+                        if (tr >= 0 && tr < GRID_SIZE && tc >= 0 && tc < GRID_SIZE) {
 
-                let targetHouse = nextGridState[tr][tc];
-                let coordinateKey = `${tr},${tc}`;
+                            let targetHouse = nextGridState[tr][tc];
+                            let coordinateKey = `${tr},${tc}`;
 
-                if (targetHouse.isInfected || targetHouse.isDead || targetHouse.isRecovered || exposedHousesThisCycle.has(coordinateKey)) continue;
+                            if (targetHouse.isInfected || targetHouse.isDead || targetHouse.isRecovered || exposedHousesThisCycle.has(coordinateKey)) continue;
 
-                exposedHousesThisCycle.add(coordinateKey);
+                            exposedHousesThisCycle.add(coordinateKey);
 
-                // Infect new house
-                targetHouse.isInfected = true;
-                targetHouse.daysInfected = 1;
+                            // Infect new house
+                            targetHouse.isInfected = true;
+                            targetHouse.daysInfected = 1;
 
-                kafkaSpreadThisCycle = true;
-            }
+                            kafkaSpreadThisCycle = true;
+                        }
+                    }
+                }
+
+
+                            // Kafka mortality AFTER spreading (only after at least 2 days infected)
+                            if (activeHouseNextState.daysInfected >= 2 && Math.random() < KAFKA_MORTALITY) {
+                                activeHouseNextState.isInfected = false;
+                                activeHouseNextState.isDead = true;
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+
+    
+    let finalActiveCount = 0;
+    for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+            if (nextGridState[r][c].isInfected && !nextGridState[r][c].isDead) finalActiveCount++;
         }
-    } // Ends the dc loop
-} // Ends the dr loop
+    }
 
-// 2. Kafka mortality AFTER spreading (checked for the active house triggering the outbreak)
-if (activeHouseNextState.daysInfected >= 2 && Math.random() < KAFKA_MORTALITY) {
-    activeHouseNextState.isInfected = false;
-    activeHouseNextState.isDead = true;
-    // Note: Use 'continue' only if this entire block is directly inside your main grid loop
-    continue; 
-}
     gridData = nextGridState;
     drawGrid();
 
