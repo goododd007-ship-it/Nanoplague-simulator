@@ -516,7 +516,7 @@ function runDayCycle(virusType) {
             }
 
 // --- Kafka ---
-            if (virusType === "Kafka (★‿★)") {
+            if (virusType === "Kafka") {
 
                 // Kafka spreads FIRST
                 const maxRadius = 50; 
