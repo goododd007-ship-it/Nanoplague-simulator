@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nanoplauge</title>
+    <style>
+        html, body {
+            background-color: #1e1e1e !important;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
+        #kafkaOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0;
+    border-radius: 8px;
+
+    background: radial-gradient(
+        circle,
+        rgba(180, 0, 255, 0.35) 0%,
+        rgba(120, 0, 180, 0.6) 40%,
+        rgba(0, 0, 0, 0) 70%
+    );
+
+    mix-blend-mode: screen;
+    transition: opacity 0.3s ease-out;
+}
+
+.kafkaPulse {
+    animation: kafkaPulseAnim 0.9s ease-out forwards;
+}
+
+@keyframes kafkaPulseAnim {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
+        filter: blur(2px);
+    }
+    40% {
+        opacity: 0.9;
+        transform: scale(1.3);
+        filter: blur(6px);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(2.0);
+        filter: blur(10px);
+    }
+}
+
+@keyframes kafkaFinalFlash {
+    0% { opacity: 0; }
+    20% { opacity: 1; background-color: rgba(255, 0, 255, 0.8); }
+    100% { opacity: 0; }
+}
+
+        #grid {
+            display: inline-block;
+            background-color: #2c3e50; /* Slate color so white dots are visible */
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .adv-info {
+            display:inline-block;
+            width:16px;
+            height:16px;
+            border-radius:50%;
+            border:1px solid #666;
+            color:#fff;
+            text-align:center;
+            line-height:14px;
+            font-size:11px;
+            margin-left:8px;
+            cursor:help;
+            background: rgba(255,255,255,0.02);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>NANOPLAGUE V.1</h1>
+    <h3><V class="E S">The Virus Epidemic Simulator</h3>
+
+    <div style="display: flex; justify-content: center; gap: 40px; margin-top: 20px; align-items: flex-start;">
+        
+        <div id="controls" style="background-color: #333; padding: 20px; border-radius: 8px; text-align: left; width: 250px;">
+            <h3 style="margin-top: 0; color: #3498db;">Simulation Deck</h3>
+            
+            <label><strong>Select Pathogen:</strong></label><br>
+            <select id="virusSelect" style="width: 100%; margin: 8px 0 20px 0; padding: 5px;">
+                <option value="lyssavirus">Lyssavirus</option>
+                <option value="covid">COVID-19</option>
+                <option value="measles">Measles</option>
+                <option value="Kafka (★‿★)">Kafka (★‿★)</option>
+            </select>
+            <div style="background-color: #222; padding: 10px; border-radius: 5px; margin-bottom: 15px; font-size: 14px; border-left: 4px solid #3498db;">
+                <div>📅 Day: <span id="statDay" style="font-weight: bold; color: #f1c40f;">0</span></div>
+                <div>🔴 Active Cases: <span id="statCases" style="font-weight: bold; color: #e74c3c;">0</span></div>
+                <div>🔵 Protected Pool: <span id="statVax" style="font-weight: bold; color: #3498db;">0</span></div>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label for="vaxSlider"><strong>Vaccination Rate:</strong> <span id="vaxPercent" style="font-weight: bold; color: #3498db;">69%</span></label>
+                <input id="vaxSlider" type="range" min="0" max="100" step="1" value="69" style="width: 100%; margin-top: 6px;" />
+                <div style="font-size: 12px; color: #bbb; margin-top: 6px;">(Slider is disabled while the simulation is running)</div>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <label for="daySpeedSlider"><strong>Day Speed:</strong> <span id="daySpeedDisplay" style="font-weight: bold; color: #f1c40f;">300 ms/day</span></label>
+                <input id="daySpeedSlider" type="range" min="50" max="2000" step="10" value="300" style="width: 100%; margin-top: 6px;" />
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <button id="pauseBtn" style="flex:1; padding:8px; background:#f39c12; color:#111; border:none; border-radius:4px; cursor:pointer;">Pause</button>
+                    <button id="stepDayBtn" style="flex:1; padding:8px; background:#95a5a6; color:#111; border:none; border-radius:4px; cursor:pointer;">+1 Day</button>
+                </div>
+            </div>
+            <button id="startBtn" onclick="triggerOutbreak()" style="width: 100%; padding: 10px; background-color: #ff1900; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-bottom: 10px;">
+                START OUTBREAK
+            </button>
+
+            <button id="resetBtn" onclick="resetSimulation()" style="width: 100%; padding: 10px; background-color: #2c8c93; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">
+                RESET MAP
+            </button>
+            
+            <div style="margin-top:12px; display:flex; justify-content:center;">
+                <button id="advToggle" style="background:transparent; border:none; color:#fff; cursor:pointer; font-size:14px; display:flex; align-items:center; gap:6px;">
+                    <span id="advArrow" style="display:inline-block; transform:rotate(0deg); transition:transform 0.2s;">▾</span>
+                    <strong style="color:#ddd;">Advanced Settings</strong>
+                </button>
+            </div>
+
+            <div id="advancedSettings" style="display:none; margin-top:10px; background:#222; padding:10px; border-radius:6px; text-align:left;">
+                <label for="animalRateSlider"><strong>Animal ownage rate:</strong> <span id="animalRatePct" style="font-weight:bold; color:#f1c40f">10%</span>
+                    <span class="adv-info" title="Controls percentage of houses that own animals; increases spread for zoonotic viruses.">i</span></label>
+                <input id="animalRateSlider" type="range" min="0" max="100" step="1" value="10" style="width:100%; margin:6px 0 10px 0;" />
+
+                <label for="socialDistSlider"><strong>Social distancing level:</strong> <span id="socialDistPct" style="font-weight:bold; color:#f1c40f">0%</span>
+                    <span class="adv-info" title="Reduces transmission for COVID-19 and Measles; higher value means fewer infections.">i</span></label>
+                <input id="socialDistSlider" type="range" min="0" max="100" step="1" value="0" style="width:100%; margin:6px 0 10px 0;" />
+
+                <label for="symptomAwarenessSlider"><strong>Symptom awareness:</strong> <span id="symptomAwarenessPct" style="font-weight:bold; color:#f1c40f">0%</span>
+                    <span class="adv-info" title="Increases recovery chance as awareness rises (people seek care or isolate sooner).">i</span></label>
+                <input id="symptomAwarenessSlider" type="range" min="0" max="100" step="1" value="0" style="width:100%; margin:6px 0 0 0;" />
+            </div>
+        </div>
+
+<div id="gridContainer" style="position: relative;">
+    <div id="grid">Grid will load here...</div>
+    <div id="kafkaOverlay"></div>
+</div>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

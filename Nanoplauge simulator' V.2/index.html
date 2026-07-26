@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nanoplague 2.0</title>
+
+    <!-- Right Container: Map Screen and Nav -->
+<div id="viewport-container">
+    <!-- Tactical Navigation Tabs -->
+    <div id="sector-nav">
+        <button class="nav-tab active" onclick="switchSector('Central')">Central Hub</button>
+        <button class="nav-tab" onclick="switchSector('North')">North</button>
+        <button class="nav-tab" onclick="switchSector('South')">South</button>
+        <button class="nav-tab" onclick="switchSector('East')">East</button>
+        <button class="nav-tab" onclick="switchSector('West')">West</button>
+    </div>
+
+    <!-- The Map Screen (Now displays ONE sector beautifully) -->
+    <div id="city-map"></div>
+</div>
+<style>
+
+        body {
+            background-color: #0d0f12;
+            color: #d1d5db;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            gap: 25px;
+            justify-content: center;
+        }
+        
+        /* Tactical Panel Styling */
+        #control-deck {
+            width: 320px;
+            background-color: #15181e;
+            border: 1px solid #2e3440;
+            border-radius: 6px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            /* Prevents the panel from shrinking when the map grows */
+            flex-shrink: 0; 
+        }
+        
+        h2, h3 {
+            color: #88c0d0;
+            margin-top: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        select, button {
+            width: 100%;
+            padding: 10px;
+            background-color: #2e3440;
+            border: 1px solid #4c566a;
+            color: #eceff4;
+            font-family: monospace;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        
+        button:hover { 
+            background-color: #434c5e; 
+        }
+        
+ /* Navigation Tabs Bar */
+#sector-nav {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.nav-tab {
+    flex: 1;
+    padding: 10px;
+    background-color: #1e222b;
+    border: 1px solid #3b4252;
+    color: #9ab1d6;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    margin-bottom: 0; /* Override default button margin */
+}
+
+.nav-tab.active {
+    background-color: #88c0d0;
+    color: #11141a;
+    border-color: #88c0d0;
+}
+
+/* The Single Large Viewport Map */
+#city-map {
+    background-color: #11141a;
+    border: 2px solid #232833;
+    border-radius: 8px;
+    padding: 25px;
+    display: inline-block; /* Flows naturally with the elements */
+    min-width: 450px;
+}
+
+/* Make the grid rows and cells much larger and easier to see! */
+.grid-row { 
+    display: flex; 
+    flex-direction: row;
+    gap: 6px; 
+    margin-bottom: 6px; 
+}
+
+/* --- BASE MAP NODES --- */
+.cell { 
+    width: 20px;  
+    height: 20px;
+    border-radius: 50%; 
+    background-color: #242933; /* Darker Nord base for higher contrast */
+    border: 1px solid #3b4252;
+    transition: all 0.15s ease;
+    box-sizing: border-box;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cell.animal-node {
+    border-radius: 4px;
+}
+
+/* --- INFECTED & RECOVERED --- */
+.cell.infected-node {
+    background-color: #bf616a !important; 
+    border: 1px solid #ff5555 !important;
+    box-shadow: 0 0 8px rgba(255, 85, 85, 0.7) !important;
+}
+
+.cell.recovered-node {
+    background-color: #1e222b !important;
+    border: 2px solid #a3be8c !important;
+    box-shadow: 0 0 6px rgba(163, 190, 140, 0.3) !important;
+}
+
+/* --- THE CASUALTY MATRIX (HOLLOW SKULL CONTAINERS) --- */
+.cell.dead-node {
+    background-color: #0f1115 !important; /* Drops completely into background shadow */
+    border: 1px dashed #434c5e !important;
+    box-shadow: none !important;
+}
+
+/* Floating SVG Skull Overlay Layer */
+.cell.dead-node::after {
+    content: "";
+    width: 14px;
+    height: 14px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    position: absolute;
+}
+
+/* 1. Measles (Crimson Red) */
+.cell.dead-node.dead-measles::after {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bf616a'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8zm-3 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>");
+}
+
+/* 2. COVID-19 (Biohazard Amber) */
+.cell.dead-node.dead-covid::after {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ebcb8b'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8zm-3 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>");
+}
+
+/* 3. Lyssavirus (Toxic Magenta) */
+.cell.dead-node.dead-lyssavirus::after {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23b48ead'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8zm-3 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>");
+}
+
+/* 4. Bubonic Plague (Necrotic Ash Gray) */
+.cell.dead-node.dead-plague::after {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234c566a'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8zm-3 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>");
+}
+
+/* 5. Botulism (Deep Sea Teal) */
+.cell.dead-node.dead-botulism::after {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2388c0d0'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8zm-3 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>");
+}
+
+/* 6. Anthrax (Spore Orange) */
+.cell.dead-node.dead-anthrax::after {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d08770'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8zm-3 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>");
+}
+
+/* 7. KAFKA VARIANT (Neon Violet Line/String Matrix Skull) */
+.cell.dead-node.dead-kafka::after {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b48ead' stroke-width='1.5' stroke-linecap='round'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8z'/><path d='M9 9v3M15 9v3M10 16h4M12 2v15M6 10h12'/></svg>");
+    filter: drop-shadow(0 0 3px rgba(180, 142, 173, 0.9));
+}
+
+
+
+#city-map {
+    background-color: #11141a;
+    border: 2px solid #232833;
+    border-radius: 8px;
+    padding: 40px; /* Increased padding for a cleaner frame border */
+    
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    
+    /* Remove any forced small widths so it can expand naturally */
+    width: auto;
+    min-height: 420px; 
+}
+
+
+        
+        .suburb {
+            background-color: #151922;
+            border: 1px dashed #3b4252;
+            padding: 12px;
+            border-radius: 4px;
+        }
+        
+        .suburb-title {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        
+        .grid-row { 
+            display: flex; 
+            gap: 3px; 
+            margin-bottom: 3px; 
+        }
+        
+        .cell { 
+            width: 14px; 
+            height: 14px; 
+            border-radius: 50%; 
+            background-color: #334155; 
+        }
+
+
+
+
+    </style>
+</head>
+<body>
+
+<!-- UPGRADED CONTROL PANEL -->
+<div id="control-deck">
+    <h2>System 2.0</h2>
+    <hr style="border-color: #2e3440; margin-bottom: 15px;">
+    
+    <!-- Sub-navigation Panel Tabs -->
+    <div style="display: flex; gap: 5px; margin-bottom: 15px;">
+        <button id="tab-monitor" style="margin-bottom:0; font-size: 0.75rem;" class="nav-tab active" onclick="toggleControlTab('monitor')">Monitor</button>
+        <button id="tab-config" style="margin-bottom:0; font-size: 0.75rem;" class="nav-tab" onclick="toggleControlTab('config')">Adjust</button>
+    </div>
+
+    <!-- MAIN MONITOR VIEW -->
+    <div id="panel-monitor">
+        <h3>Pathogen Profile</h3>
+        <select id="pathogen-select">
+            <option value="measles">Measles</option>
+            <option value="covid">COVID-19</option>
+            <option value="lyssavirus">Lyssavirus</option>
+            <option value="plague">Bubonic Plague</option>
+            <option value="botulism">Botulism</option>
+            <option value="anthrax">Anthrax</option>
+            <option value="kafka">Kafka Variant</option>
+        </select>
+        
+        <h3>Global Directives</h3>
+        <button id="exposure-btn" onclick="initiateExposure()">Initiate Exposure</button>
+    </div>
+
+    <!-- CONFIGURATION SLIDERS VIEW (Hidden by default) -->
+    <div id="panel-config" style="display: none;">
+        <h3>Simulation Modifiers</h3>
+        
+        <div style="margin-bottom: 12px;">
+            <label style="font-size: 11px; display: block; margin-bottom: 4px;">MUTATION RATE: <span id="val-mutation">1.0x</span></label>
+            <input id="slider-mutation" type="range" min="0.5" max="3.0" step="0.1" value="1.0" style="width: 100%;">
+        </div>
+        
+        <div style="margin-bottom: 12px;">
+            <label style="font-size: 11px; display: block; margin-bottom: 4px;">ANIMAL VECTOR INTERACTION: <span id="val-animal">100%</span></label>
+            <input id="slider-animal" type="range" min="0" max="200" step="10" value="100" style="width: 100%;">
+        </div>
+
+        <div style="margin-bottom: 15px;">
+            <label style="font-size: 11px; display: block; margin-bottom: 4px;">SANITATION BARRIER: <span id="val-sanitation">0%</span></label>
+            <input id="slider-sanitation" type="range" min="0" max="90" step="5" value="0" style="width: 100%;">
+        </div>
+    </div>
+
+    <!-- LIVE DIAGNOSTICS READOUT -->
+    <div id="diagnostics" style="font-size: 0.85rem; line-height: 1.6; margin-top: 20px; border-top: 1px dashed #2e3440; padding-top: 15px;">
+        <div>SYSTEM STATUS: <span style="color: #a3be8c;">ONLINE</span></div>
+        <div id="pathogen-info-panel" style="display:none; margin-top: 10px; padding: 10px; border: 1px solid #3b4252; border-radius: 6px; background: #1e222b;">
+            <div style="font-weight: bold; color: #88c0d0; margin-bottom: 6px;">Pathogen Kit</div>
+            <div id="pathogen-info-content"></div>
+        </div>
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">
+            <div>INFECTED: <span id="count-inf" style="color: #bf616a; font-weight: bold;">0</span></div>
+            <div>RECOVERED: <span id="count-vax" style="color: #a3be8c; font-weight: bold;">0</span></div>
+            <div>DECEASED: <span id="count-dead" style="color: #4c566a; font-weight: bold;">0</span></div>
+        </div>
+    </div>
+</div>
+    <script src="Script2.js?v=20260714"></script>
+</body>
+</html>
