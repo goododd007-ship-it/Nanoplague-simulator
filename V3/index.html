@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nanoplague 3.0</title>
+
+    <style>
+        /* Styling for the hidden tooltip text container */
+        .tooltip-icon .tooltip-text {
+            visibility: hidden;
+            width: 220px;
+            background-color: #3b4252;
+            color: #eceff4;
+            text-align: left;
+            border: 1px solid #4c566a;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 11px;
+            font-family: monospace;
+            line-height: 1.4;
+            
+            /* Position the tooltip above the icon */
+            position: absolute;
+            z-index: 10;
+            bottom: 125%; 
+            left: 50%;
+            transform: translateX(-50%);
+            
+            /* Smooth fade-in effect */
+            opacity: 0;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+
+        /* Little arrow pointing down from the tooltip */
+        .tooltip-icon .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #3b4252 transparent transparent transparent;
+        }
+
+        /* Make the tooltip visible on hover */
+        .tooltip-icon:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        body {
+            background-color: #0d0f12;
+            color: #d1d5db;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        /* Tactical Panel Styling */
+        #control-deck {
+            width: 100%; /* Spans full width of its parental column max-width constraint */
+            background-color: #15181e;
+            border: 1px solid #2e3440;
+            border-radius: 6px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+        }
+        
+        h2, h3 {
+            color: #88c0d0;
+            margin-top: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        select, button {
+            width: 100%;
+            padding: 10px;
+            background-color: #2e3440;
+            border: 1px solid #4c566a;
+            color: #eceff4;
+            font-family: monospace;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        
+        button:hover { 
+            background-color: #434c5e; 
+        }
+        
+        /* Navigation Tabs Bar */
+        #sector-nav {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 10px;
+            background-color: #1e222b;
+            border: 1px solid #3b4252;
+            color: #9ab1d6;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            margin-bottom: 0;
+        }
+
+        .nav-tab.active {
+            background-color: #88c0d0;
+            color: #11141a;
+            border-color: #88c0d0;
+        }
+
+        /* The Single Large Viewport Map */
+        #city-map {
+            background-color: #11141a;
+            border: 2px solid #232833;
+            border-radius: 8px;
+            padding: 40px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: auto;
+            min-height: 420px; 
+        }
+
+        /* Grid formatting updates */
+        .grid-row { 
+            display: flex; 
+            flex-direction: row;
+            gap: 6px; 
+            margin-bottom: 6px; 
+        }
+
+        /* --- BASE MAP NODES --- */
+        .cell { 
+            width: 20px;  
+            height: 20px;
+            border-radius: 50%; 
+            background-color: #242933; 
+            border: 1px solid #3b4252;
+            transition: all 0.15s ease;
+            box-sizing: border-box;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cell.animal-node {
+            border-radius: 4px;
+        }
+
+        /* --- INFECTED & RECOVERED --- */
+        .cell.infected-node {
+            background-color: #bf616a !important; 
+            border: 1px solid #ff5555 !important;
+            box-shadow: 0 0 8px rgba(255, 85, 85, 0.7) !important;
+        }
+
+        .cell.recovered-node {
+            background-color: #1e222b !important;
+            border: 2px solid #a3be8c !important;
+            box-shadow: 0 0 6px rgba(163, 190, 140, 0.3) !important;
+        }
+
+        /* --- THE CASUALTY MATRIX --- */
+        .cell.dead-node {
+            background-color: #0f1115 !important; 
+            border: 1px dashed #434c5e !important;
+            box-shadow: none !important;
+        }
+
+        .cell.dead-node::after {
+            content: "";
+            width: 14px;
+            height: 14px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            position: absolute;
+        }
+
+        .cell.dead-node.dead-measles::after {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bf616a'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8zm-3 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>");
+        }
+
+        .cell.dead-node.dead-covid::after {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ebcb8b'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8zm-3 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>");
+        }
+
+        .cell.dead-node.dead-lyssavirus::after {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23b48ead'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8zm-3 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>");
+        }
+
+        .cell.dead-node.dead-plague::after {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234c566a'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8zm-3 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>");
+        }
+
+        .cell.dead-node.dead-botulism::after {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2388c0d0'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8zm-3 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>");
+        }
+
+        .cell.dead-node.dead-anthrax::after {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d08770'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8zm-3 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm6 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z'/></svg>");
+        }
+
+        .cell.dead-node.dead-kafka::after {
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b48ead' stroke-width='1.5' stroke-linecap='round'><path d='M12 2a8 8 0 0 0-8 8c0 3.25 1.94 6.05 4.7 7.28L8 22h2v-2h4v2h2v-4.72c2.76-1.23 4.7-4.03 4.7-7.28a8 8 0 0 0-8-8z'/><path d='M9 9v3M15 9v3M10 16h4M12 2v15M6 10h12'/></svg>");
+            filter: drop-shadow(0 0 3px rgba(180, 142, 173, 0.9));
+        }
+
+        .suburb {
+            background-color: #151922;
+            border: 1px dashed #3b4252;
+            padding: 12px;
+            border-radius: 4px;
+        }
+        
+        .suburb-title {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<!-- THE 3-COLUMN FLEX CONTAINER -->
+<div style="display: flex; gap: 25px; max-width: 1500px; margin: 0 auto; justify-content: center; align-items: flex-start;">
+
+    <!-- COLUMN 1: LEFT SIDE DATA & TIMELINE -->
+    <div style="flex: 1; max-width: 350px; display: flex; flex-direction: column; gap: 20px;">
+        <div style="background-color: #15181e; padding: 20px; border-radius: 6px; border: 1px solid #2e3440; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+            <h3 style="color: #88c0d0; margin-top: 0; font-size: 1.1rem; letter-spacing: 0.05em;">EPIDEMIC TIMELINE</h3>
+            <canvas id="epicenterGraph" width="300" height="180" style="background-color: #11141a; border: 1px solid #232833; border-radius: 4px;"></canvas>
+        </div>
+    </div>
+
+    <!-- COLUMN 2: CENTER MAP DISPLAY -->
+    <div style="flex: 2; display: flex; flex-direction: column; align-items: center;">
+        <div id="viewport-container" style="width: 100%;">
+            <!-- Tactical Navigation Tabs -->
+            <div id="sector-nav">
+                <button class="nav-tab active" onclick="switchSector('Central')">Central Hub</button>
+                <button class="nav-tab" onclick="switchSector('North')">North</button>
+                <button class="nav-tab" onclick="switchSector('South')">South</button>
+                <button class="nav-tab" onclick="switchSector('East')">East</button>
+                <button class="nav-tab" onclick="switchSector('West')">West</button>
+            </div>
+
+            <!-- The Map Screen -->
+            <div id="city-map"></div>
+        </div>
+    </div>
+
+    <!-- COLUMN 3: RIGHT SIDE CONTROL DECK -->
+    <div style="flex: 1; max-width: 340px;">
+        <div id="control-deck">
+            <h2>System 3.0</h2>
+            <hr style="border-color: #2e3440; margin-bottom: 15px;">
+            
+            <!-- Sub-navigation Panel Tabs -->
+            <div style="display: flex; gap: 5px; margin-bottom: 15px;">
+                <button id="tab-monitor" style="margin-bottom:0; font-size: 0.75rem;" class="nav-tab active" onclick="toggleControlTab('monitor')">Monitor</button>
+                <button id="tab-config" style="margin-bottom:0; font-size: 0.75rem;" class="nav-tab" onclick="toggleControlTab('config')">Adjust</button>
+            </div>
+
+            <!-- MAIN MONITOR VIEW -->
+            <div id="panel-monitor">
+                <h3>Pathogen Profile</h3>
+                <select id="pathogen-select">
+                    <option value="measles">Measles</option>
+                    <option value="covid">COVID-19</option>
+                    <option value="lyssavirus">Lyssavirus</option>
+                    <option value="plague">Bubonic Plague</option>
+                    <option value="botulism">Botulism</option>
+                    <option value="anthrax">Anthrax</option>
+                    <option value="kafka">Kafka Variant</option>
+                    <option value="nanoplague">Nano Plague</option>
+                </select>
+                
+                <h3>Global Directives</h3>
+                <button id="exposure-btn" onclick="initiateExposure()">Initiate Exposure</button>
+
+                <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 4px; padding: 10px; border: 1px solid #3b4252; border-radius: 6px; background: #1e222b;">
+                    <div>INFECTED: <span id="count-inf" style="color: #bf616a; font-weight: bold;">0</span></div>
+                    <div>RECOVERED: <span id="count-vax" style="color: #a3be8c; font-weight: bold;">0</span></div>
+                    <div>DECEASED: <span id="count-dead" style="color: #4c566a; font-weight: bold;">0</span></div>
+                </div>
+            </div>
+
+            <!-- CONFIGURATION SLIDERS VIEW -->
+            <div id="panel-config" style="display: none; padding: 10px; background: #2e3440; border-radius: 4px;">
+                <h3 style="font-size: 1rem; margin-bottom: 15px;">Simulation Modifiers</h3>
+                
+                <!-- Mutation Factor Group -->
+                <div class="control-group" style="margin-bottom: 15px;">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <label style="font-size: 11px; font-weight: bold;">Mutation Factor: <span id="val-mutation">1.0x</span></label>
+                    <div class="tooltip-icon" style="cursor: help; color: #88c0d0; font-size: 14px; position: relative; display: inline-block;">
+                      ⓘ
+                      <span class="tooltip-text">Multiplier applied to pathogen transmission rates. Affects evolution pacing for strains like the Kafka Variant.</span>
+                    </div>
+                  </div>
+                  <input id="slider-mutation" type="range" min="0.5" max="3.0" step="0.1" value="1.0" style="width: 100%; margin-top: 4px;">
+                  <p id="info-mutation" style="font-size: 11px; margin: 4px 0 0 0; color: #88c0d0; font-family: monospace;">
+                      🧬 Status: Baseline evolution rate. Standard pathogen profiles active.
+                  </p>
+                </div>
+
+                <!-- Animal Vector Ratio Group -->
+                <div class="control-group" style="margin-bottom: 15px;">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <label style="font-size: 11px; font-weight: bold;">Animal Vector Ratio: <span id="val-animal">15%</span></label>
+                    <div class="tooltip-icon" style="cursor: help; color: #88c0d0; font-size: 14px; position: relative; display: inline-block;">
+                      ⓘ
+                      <span class="tooltip-text">Determines the percentage of grid entities that bear animals during map generation/resets.</span>
+                    </div>
+                  </div>
+                  <input id="slider-animal" type="range" min="0" max="100" step="5" value="15" style="width: 100%; margin-top: 4px;">
+                  <p id="info-animal" style="font-size: 11px; margin: 4px 0 0 0; color: #a3be8c; font-family: monospace;">
+                      🐀 Status: Standard urban population layout. Zoonotic vectors isolated.
+                  </p>
+                </div>
+
+                <!-- Global Sanitation Mod Group -->
+                <div class="control-group" style="margin-bottom: 15px;">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <label style="font-size: 11px; font-weight: bold;">Sanitation Barrier: <span id="val-sanitation">0%</span></label>
+                    <div class="tooltip-icon" style="cursor: help; color: #88c0d0; font-size: 14px; position: relative; display: inline-block;">
+                      ⓘ
+                      <span class="tooltip-text">Reduces base transmission probability. Higher percentages significantly suppress standard pathogen spread across all sectors.</span>
+                    </div>
+                  </div>
+                  <input id="slider-sanitation" type="range" min="0" max="100" step="5" value="0" style="width: 100%; margin-top: 4px;">
+                  <p id="info-sanitation" style="font-size: 11px; margin: 4px 0 0 0; color: #ebcb8b; font-family: monospace;">
+                      🧼 Status: Public compliance at zero. Pathogen surface lifespan unimpeded.
+                  </p>
+                </div>
+
+<!-- NANO PLAGUE CONTROLS DYNAMIC BOX -->
+<div id="nano-plague-controls" style="display: none; border: 1px dashed #88c0d0; padding: 10px; margin: 12px 0; border-radius: 4px; background: #2e3440;">
+    <h4 style="color: #88c0d0; margin: 0 0 8px 0; font-size: 13px;">🧬 Nano Plague Laboratory</h4>
+    
+    <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; display: block; color: #d8dee9;">
+            Ambient Climate (Temperature Mod): <span id="val-nano-temp">1.0x</span>
+        </label>
+        <input id="slider-nano-temp" type="range" min="0.5" max="2.0" step="0.1" value="1.0" style="width: 100%;">
+        <p id="info-nano-temp" style="font-size: 11px; margin: 4px 0 0 0; color: #88c0d0; font-family: monospace;">
+            🌡️ Status: Optimal thermal operating parameters. Kinetic nanite replication stable.
+        </p>
+    </div>
+
+    <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; display: block; color: #d8dee9;">
+            Handwashing/Hygiene Adherence: <span id="val-nano-hygiene">0%</span>
+        </label>
+        <input id="slider-nano-hygiene" type="range" min="0" max="100" step="5" value="0" style="width: 100%;">
+        <p id="info-nano-hygiene" style="font-size: 11px; margin: 4px 0 0 0; color: #ebcb8b; font-family: monospace;">
+            🧼 Status: Core logic unhindered. Zero community physical sanitation barriers detected.
+        </p>
+    </div>
+
+    <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; display: block; color: #d8dee9;">
+            Base Lethality: <span id="val-nano-lethality">10%</span>
+        </label>
+        <input id="slider-nano-lethality" type="range" min="5" max="95" step="1" value="10" style="width: 100%;">
+        <p id="info-nano-lethality" style="font-size: 11px; margin: 4px 0 0 0; color: #bf616a; font-family: monospace;">
+            ☠️ Status: Lethality baseline set to low severity.
+        </p>
+    </div>
+
+    <div style="margin-bottom: 12px;">
+        <label style="font-size: 12px; display: block; color: #d8dee9;">
+            Post-Mortem Infectivity Amplifier: <span id="val-nano-lethality-boost">0%</span>
+        </label>
+        <input id="slider-nano-lethality-boost" type="range" min="0" max="100" step="5" value="0" style="width: 100%;">
+        <p id="info-nano-lethality-boost" style="font-size: 11px; margin: 4px 0 0 0; color: #d08770; font-family: monospace;">
+            ⚡ Status: Dead bodies do not remain infectious.
+        </p>
+    </div>
+
+    <div style="margin-top: 8px; border-top: 1px dashed #3b4252; padding-top: 8px;">
+        <div style="font-size: 12px; color: #88c0d0; margin-bottom: 6px; font-weight: bold;">Transmission Specialty Mimicry</div>
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #d8dee9; margin-bottom: 6px;">
+            <input id="check-nano-kafka" type="checkbox">
+            Copy Kafka-style mutation drift
+        </label>
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #d8dee9; margin-bottom: 6px;">
+            <input id="check-nano-covid" type="checkbox">
+            Copy COVID-style stealth phase
+        </label>
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #d8dee9; margin-bottom: 6px;">
+            <input id="check-nano-plague" type="checkbox">
+            Copy plague-style animal-bias targeting
+        </label>
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #d8dee9;">
+            <input id="check-nano-measles" type="checkbox">
+            Copy measles-style burst spread
+        </label>
+        <p id="info-nano-specialties" style="font-size: 11px; margin: 6px 0 0 0; color: #88c0d0; font-family: monospace;">
+            🧬 Specialty mimicry: Off. Nano Plague remains fully autonomous.
+        </p>
+    </div>
+</div>
+            <!-- LIVE DIAGNOSTICS READOUT -->
+            <div id="diagnostics" style="font-size: 0.85rem; line-height: 1.6; margin-top: 20px; border-top: 1px dashed #2e3440; padding-top: 15px;">
+                <div>SYSTEM STATUS: <span style="color: #a3be8c;">ONLINE</span></div>
+                <div id="pathogen-info-panel" style="display:none; margin-top: 10px; padding: 10px; border: 1px solid #3b4252; border-radius: 6px; background: #1e222b;">
+                    <div style="font-weight: bold; color: #88c0d0; margin-bottom: 6px;">Pathogen Kit</div>
+                    <div id="pathogen-info-content"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+    
+
+<script src="script.js"></script>
+</body>
+</html>
